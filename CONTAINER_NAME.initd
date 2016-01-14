@@ -34,8 +34,8 @@ DOCKER=/usr/bin/docker
 # Funtion that creates the container
 do_create()
 {
-	# Check if the container has been created before
-	if [ ! -z "$(${DOCKER} ps -aq --filter """name=${NAME}""")" ]
+	# Check if the container has been created before, then rebuild (destroy container and create again)
+	if [ $(check_running; echo $?) -eq 1 ]
 	then
 		do_destroy
 	fi
@@ -69,12 +69,30 @@ do_check_version()
 do_destroy()
 {
 	# Check if the container is running
-	if [ ! -z "$(${DOCKER} ps -q --filter """name=${NAME}""")" ]
+	if [ $(check_running; echo $?) -eq 0 ]
 	then
 		do_stop
 	fi
-	echo "Deleting the container ${NAME} associated to ${DESC}..."
-	${DOCKER} rm ${NAME}
+	if [ $(check_exists; echo $?) -eq 1 ]
+	then
+		echo "Deleting the container ${NAME} associated to ${DESC}..."
+		${DOCKER} rm ${NAME}
+	fi
+}
+
+do_uninstall()
+{
+	# Delete container if any present
+	do_destroy
+	echo "Deleting images associated to the container ${NAME}..."
+        if [ -z "${CONTAINER_IMAGE}" ]
+        then
+                CONTAINER_IMAGE_NAME="${NAME}"
+        else
+                CONTAINER_IMAGE_NAME="${CONTAINER_IMAGE}"
+        fi
+
+        ${DOCKER} rmi ${CONTAINER_IMAGE_NAME}
 }
 
 #
@@ -83,10 +101,10 @@ do_destroy()
 do_start()
 {
 	# Check if the container is already up and running...
-	if [ -z "$(${DOCKER} ps -q --filter """name=${NAME}""")" ]
+	if [ $(check_running; echo $?) -eq 0 ]
 	then
 		# If the container is not running and hasn't been created yet, create it
-		if [ -z "$(${DOCKER} ps -aq --filter """name=${NAME}""")" ]
+		if [ $(check_exists; echo $?) -eq 0 ]
 		then
 			# Create (it will download and run or create and run)
 			do_create
@@ -104,9 +122,9 @@ do_start()
 #
 do_stop()
 {
-	if [ -z "$(${DOCKER} ps -q --filter """name=${NAME}""")" ]
+	if [ $(check_running; echo $?) -eq 0 ]
 	then
-		echo "${DESC} is not running#"
+		echo "${DESC} is not running"
 	else
 		echo "Stopping ${DESC}..."
 		${DOCKER} stop ${NAME}
@@ -117,12 +135,48 @@ do_stop()
 #
 get_status()
 {
-	if [ -z "$(${DOCKER} ps -q --filter """name= ${NAME}""")" ]
+	if [ $(check_running; echo $?) -eq 0 ]
 	then
 		echo "${DESC} not running"
 	else
 		echo "${DESC} running"
 		${DOCKER} stats ${NAME}
+	fi
+}
+
+#
+# Function that return if the service (container) is running
+# RETURN 
+#	1 (true) if the container is running
+# 	0 (false) if the container is not running
+check_running()
+{
+	# TRUE if command returns EMPTY string that means that IS NOT RUNNING
+	# FALSE if command returns something that means that IS RUNNING
+	if [ -z "$(${DOCKER} ps --filter name=${NAME} | grep ${NAME}$ )" ]
+	then 
+		# 0 = false, the container IS NOT RUNNING
+		return 0
+	else
+		# 1 = true, the container IS RUNNING
+		return 1
+	fi
+}
+
+#
+# Function that return if the service (container) exists (running or not)
+# RETURN 
+#	1 (true) if the container exists
+# 	0 (false) if the container not exists
+check_exists()
+{
+	if [ -z "$(${DOCKER} ps -a --filter name=${NAME} | grep ${NAME}$ )" ]
+	then 
+		# 0 = false, the container doesn't EXISTS
+		return 0
+	else
+		# 1 = true, the container EXISTS
+		return 1
 	fi
 }
 
@@ -142,15 +196,19 @@ case "$1" in
   destroy)
 	do_destroy
 	;;
+  uninstall)
+	do_uninstall
+	;;
   restart|force-reload)
 	echo "Restarting $DESC"
 	do_stop
 	do_start
 	;;
   *)
-	echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload|create|destroy}" >&2
+	echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload|create|destroy|uninstall}" >&2
 	exit 3
 	;;
 esac
 
 :
+
