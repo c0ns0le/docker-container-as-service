@@ -52,4 +52,4 @@ CONTAINER_IMAGE='nginx:1.9.9'
 # When the script downloads an image and creates a container uses this args to specify additional configuration
 # like Port-Mapping, Volume-Mapping, Links, etc. 
 # If you leave it blank, default run command will be ran
-CONTAINER_ARGS=' -p "8888:80" '
+CONTAINER_ARGS='-p 8888:80 -p 8889:443'
