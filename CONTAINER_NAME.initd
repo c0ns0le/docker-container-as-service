@@ -40,7 +40,14 @@ do_create()
 		do_destroy
 	fi
 	echo "Creating the container based on configuration..."
-	${DOCKER} run -d --name ${NAME} ${CONTAINER_ARGS} -t ${CONTAINER_IMAGE}
+	if [ -z "${CONTAINER_IMAGE}" ]
+	then
+		CONTAINER_IMAGE_NAME="${NAME}"
+	else
+		CONTAINER_IMAGE_NAME="${CONTAINER_IMAGE}"
+	fi
+
+	${DOCKER} run -d --name ${NAME} ${CONTAINER_ARGS} -t ${CONTAINER_IMAGE_NAME}
 }
 
 #
@@ -78,8 +85,16 @@ do_start()
 	# Check if the container is already up and running...
 	if [ -z "$(${DOCKER} ps -q --filter """name=${NAME}""")" ]
 	then
-		echo "Starting ${DESC}..."
-		${DOCKER} start ${NAME}
+		# If the container is not running and hasn't been created yet, create it
+		if [ -z "$(${DOCKER} ps -aq --filter """name=${NAME}""")" ]
+		then
+			# Create (it will download and run or create and run)
+			do_create
+		else
+			# If exists it means that's only stopped, su just run it
+			echo "Starting ${DESC}..."
+			${DOCKER} start ${NAME}
+		fi
 	else
 		echo "${DESC} is already running..."
 	fi
