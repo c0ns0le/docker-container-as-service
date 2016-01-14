@@ -6,8 +6,8 @@
 # If you use private docker registry (not docker.io) then use USER/name like ppadial/demo-container
 # If you leave it blank, the name specified in the initd file as NAME var will be used. It will work for
 # all the docker.io public images.
-CONTAINER_IMAGE='nginx:1.9.9'
+CONTAINER_IMAGE=''
 # When the script downloads an image and creates a container uses this args to specify additional configuration
 # like Port-Mapping, Volume-Mapping, Links, etc. 
 # If you leave it blank, default run command will be ran
-CONTAINER_ARGS='-p 8888:80 -p 8889:443'
+CONTAINER_ARGS=''
