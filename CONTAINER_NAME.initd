@@ -1,0 +1,141 @@
+#! /bin/sh
+### BEGIN INIT INFO
+# Provides:          CONTAINER_NAME
+# Required-Start:    $remote_fs $syslog docker
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:     2 3 4 5
+# Default-Stop:      0 1 6
+# Short-Description: Same as DESC
+# Description:       Working with CONTAINER_NAME container as a service
+### END INIT INFO
+
+# Author: Paulino Padial <ppadial@itrsgroup.com>
+# Do NOT "set -e"
+
+# PATH should only include /usr/* if it runs after the mountnfs.sh script
+PATH=/sbin:/usr/sbin:/bin:/usr/bin
+DESC="Skeleton Container"
+NAME=CONTAINER_NAME
+SCRIPTNAME=/etc/init.d/$NAME
+DOCKER=/usr/bin/docker
+
+# Read configuration variable file if it is present
+[ -r /etc/default/$NAME ] && . /etc/default/$NAME
+
+# Load the VERBOSE setting and other rcS variables
+. /lib/init/vars.sh
+
+# Define LSB log_* functions.
+# Depend on lsb-base (>= 3.2-14) to ensure that this file is present
+# and status_of_proc is working.
+. /lib/lsb/init-functions
+
+#
+# Funtion that creates the container
+do_create()
+{
+	# Check if the container has been created before
+	if [ ! -z "$(${DOCKER} ps -aq --filter """name=${NAME}""")" ]
+	then
+		do_destroy
+	fi
+	echo "Creating the container based on configuration..."
+	${DOCKER} run -d --name ${NAME} ${CONTAINER_ARGS} -t ${CONTAINER_IMAGE}
+}
+
+#
+# Function that updates the current container version to another one
+do_update()
+{
+	echo "Not Implemented Yet"
+}
+
+#
+# Function that checks if theres a new image version for the running container
+do_check_version()
+{
+	echo "Not Implemented Yet"
+}
+
+#
+# Function that destroy the container
+do_destroy()
+{
+	# Check if the container is running
+	if [ ! -z "$(${DOCKER} ps -q --filter """name=${NAME}""")" ]
+	then
+		do_stop
+	fi
+	echo "Deleting the container ${NAME} associated to ${DESC}..."
+	${DOCKER} rm ${NAME}
+}
+
+#
+# Function that starts the daemon/service
+#
+do_start()
+{
+	# Check if the container is already up and running...
+	if [ -z "$(${DOCKER} ps -q --filter """name=${NAME}""")" ]
+	then
+		echo "Starting ${DESC}..."
+		${DOCKER} start ${NAME}
+	else
+		echo "${DESC} is already running..."
+	fi
+}
+#
+# Function that stops the daemon/service
+#
+do_stop()
+{
+	if [ -z "$(${DOCKER} ps -q --filter """name=${NAME}""")" ]
+	then
+		echo "${DESC} is not running#"
+	else
+		echo "Stopping ${DESC}..."
+		${DOCKER} stop ${NAME}
+	fi
+}
+#
+# Function that gets the status of the container
+#
+get_status()
+{
+	if [ -z "$(${DOCKER} ps -q --filter """name= ${NAME}""")" ]
+	then
+		echo "${DESC} not running"
+	else
+		echo "${DESC} running"
+		${DOCKER} stats ${NAME}
+	fi
+}
+
+case "$1" in
+  start)
+	do_start
+	;;
+  stop)
+	do_stop
+	;;
+  status)
+	get_status
+	;;
+  create)
+	do_create
+	;;
+  destroy)
+	do_destroy
+	;;
+  restart|force-reload)
+	echo "Restarting $DESC"
+	do_stop
+	do_start
+	;;
+  *)
+	echo "Usage: $SCRIPTNAME {start|stop|status|restart|force-reload|create|destroy}" >&2
+	exit 3
+	;;
+esac
+
+:
